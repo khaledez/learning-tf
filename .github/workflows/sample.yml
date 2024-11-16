@@ -1,0 +1,17 @@
+name: "Sample workflow for learning"
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start
+        run: echo Hello World
+      - run: |
+          ls
+          pwd
+
