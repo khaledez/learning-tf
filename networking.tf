@@ -1,34 +1,84 @@
-data "aws_availability_zones" "available" {}
-
-module "vpc" {
-  source                       = "terraform-aws-modules/vpc/aws"
-  version                      = "5.15.0"
-  name                         = "main-vpc"
-  cidr                         = "10.0.0.0/16"
-  azs                          = data.aws_availability_zones.available.names
-  private_subnets              = ["10.0.1.0/24"]
-  public_subnets               = ["10.0.101.0/24"]
-  create_database_subnet_group = true
-  enable_nat_gateway           = true
-  single_nat_gateway           = true
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 }
 
-module "public_sg" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "5.2.0"
-  vpc_id  = module.vpc.vpc_id
-  name    = "public_sg"
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
+}
 
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-  egress_cidr_blocks  = ["0.0.0.0/0"]
-  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
-  egress_rules = ["all-all"]
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+}
+
+# Public Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource "aws_route_table_association" "public_subnet" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_security_group" "ssh" {
+  name        = "ssh"
+  description = "Allow ssh inbound traffic and all outbound traffic"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ssh" {
+  security_group_id = aws_security_group.ssh.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 22
+  to_port           = 22
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_all_traffic" {
+  security_group_id = aws_security_group.ssh.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # all protocols
+}
+
+resource "aws_security_group" "web" {
+  name        = "web"
+  description = "allow access from web"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "http" {
+  security_group_id = aws_security_group.web.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "https" {
+  security_group_id = aws_security_group.web.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_ipv4" {
+  security_group_id = aws_security_group.web.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # all protocols
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_ipv6" {
+  security_group_id = aws_security_group.web.id
+  cidr_ipv6         = "::/0"
+  ip_protocol       = "-1" # all protocols
 }

@@ -5,8 +5,11 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: us-east-2
+
 jobs:
-  main:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,6 +22,19 @@ jobs:
         run: tofu fmt -check
         continue-on-error: true
 
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8
+      - name: setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: OpenTofu Init
         run: tofu init
 
@@ -28,3 +44,5 @@ jobs:
       - name: OpenTofu Plan
         run: tofu plan -no-color
         continue-on-error: true
+        env:
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
