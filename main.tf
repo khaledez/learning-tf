@@ -28,6 +28,10 @@ resource "aws_instance" "web" {
   associate_public_ip_address = true
   user_data_base64            = base64encode(file("./cloud-init.sh"))
 
+  lifecycle {
+    ignore_changes = [user_data_base64]
+  }
+
   tags = {
     Env = "production"
   }
