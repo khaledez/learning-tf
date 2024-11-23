@@ -4,4 +4,4 @@ sudo apt update
 sudo apt -y upgrade
 sudo apt install -y nginx
 sudo systemctl enable --now nginx
-echo "HEllo Again"
+echo "some things"
