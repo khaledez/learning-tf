@@ -3,7 +3,7 @@ name: "Infrastructure Sync"
 on:
   push:
     branches:
-      - main
+      - not-there
 
 env:
   AWS_REGION: us-east-2

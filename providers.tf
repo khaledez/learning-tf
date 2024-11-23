@@ -5,6 +5,14 @@ terraform {
       version = "~> 5.70"
     }
   }
+
+  cloud {
+    organization = "khaledez-learning"
+    hostname     = "app.terraform.io"
+    workspaces {
+      name = "web"
+    }
+  }
 }
 
 provider "aws" {
